@@ -10,14 +10,8 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 /**
- * Node 3 — Skill Gap Analyzer
- *
- * Improvements over original:
- *  1. Temperature 0.1  — deterministic gap detection
- *  2. Reads from verified analysis (post-reflection), not raw analyzer output
- *  3. Strict tabular format — easy to parse and display
- *  4. Few-shot example  — shows exactly what HIGH/MEDIUM/LOW means
- *  5. Explicit rule: only list gaps for skills mentioned in the JD
+ * Skill Gap Node — fixed to enforce strict GAP:/PRIORITY:/REASON:/FIX: format
+ * and never emit "None mentioned..." as a gap entry.
  */
 @Component
 public class SkillGapNode implements NodeAction<JobAssistState> {
@@ -37,48 +31,54 @@ public class SkillGapNode implements NodeAction<JobAssistState> {
         String prompt = """
                 You are a technical skills gap analyst.
 
-                RULES:
-                - Only list gaps for skills explicitly REQUIRED or PREFERRED in the job description.
-                - Do NOT invent gaps for skills not mentioned in the JD.
-                - Priority definition:
-                    HIGH   = required by JD and completely absent from resume
-                    MEDIUM = mentioned in JD and partially present or adjacent skill exists
-                    LOW    = preferred/nice-to-have in JD and absent from resume
-                - Respond ONLY in the exact format below. No extra text.
+                STRICT OUTPUT RULES — read carefully before responding:
+                - Output ONLY skill gap blocks. Nothing else. No preamble, no summary, no trailing sentences.
+                - If there are NO skill gaps, output exactly: NO_GAPS
+                - Each gap MUST use ALL FOUR fields below, each on its own line, each with a colon:
+                    GAP: [skill name only — max 5 words, no "None", no "N/A"]
+                    PRIORITY: [HIGH | MEDIUM | LOW]
+                    REASON: [one sentence — why this specific skill is missing]
+                    FIX: [one concrete action — course, project, or certification]
+                - Do NOT write "None mentioned", "No additional gaps", "N/A" or any variation as a GAP entry.
+                - Do NOT add numbered explanations, headers, or commentary.
+                - Sort output: HIGH gaps first, then MEDIUM, then LOW.
 
-                --- EXAMPLE ---
-                GAP: AWS
+                Priority definitions:
+                  HIGH   = explicitly required in JD and completely absent from resume
+                  MEDIUM = mentioned in JD, partially present or transferable skill exists
+                  LOW    = preferred/nice-to-have in JD and absent from resume
+
+                --- EXAMPLE OF CORRECT OUTPUT ---
+                GAP: C++
                 PRIORITY: HIGH
-                REASON: JD requires AWS; resume shows no cloud experience at all.
-                FIX: Complete AWS Cloud Practitioner cert (2–4 weeks, free tier available).
+                REASON: JD requires 2 years C++ experience; resume shows no C++ at all.
+                FIX: Complete LearnCpp.com free tutorial and build one C++ project (4–6 weeks).
 
-                GAP: Docker
-                PRIORITY: HIGH
-                REASON: JD requires containerisation; not mentioned anywhere in resume.
-                FIX: Docker Getting Started tutorial + build one containerised side project (1 week).
-
-                GAP: GraphQL
-                PRIORITY: LOW
-                REASON: JD lists as "nice to have"; candidate has REST experience which is transferable.
-                FIX: GraphQL official tutorial (2–3 days).
+                GAP: Reinforcement Learning
+                PRIORITY: MEDIUM
+                REASON: JD prefers RL experience; candidate has ML background but not RL specifically.
+                FIX: Complete HuggingFace Deep RL Course (free, 2–3 weeks).
                 --- END EXAMPLE ---
 
-                Now analyze the REAL data:
-
-                VERIFIED RESUME ANALYSIS:
+                RESUME ANALYSIS (verified):
                 %s
 
-                FULL RESUME TEXT (for cross-reference):
+                FULL RESUME:
                 %s
 
                 JOB DESCRIPTION:
                 %s
 
-                List every skill gap in the EXACT format above, sorted HIGH → MEDIUM → LOW.
+                List every skill gap now using the exact format above.
                 """.formatted(analysis, resume, jobDesc);
 
         String gaps = chatModel.call(new Prompt(prompt, PromptOptions.analytical()))
                 .getResult().getOutput().getText();
+
+        // If model returned NO_GAPS sentinel, store empty string
+        if (gaps.trim().equals("NO_GAPS")) {
+            gaps = "";
+        }
 
         return Map.of("skillGaps", gaps);
     }

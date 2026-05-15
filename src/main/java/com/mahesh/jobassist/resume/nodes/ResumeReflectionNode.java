@@ -10,13 +10,17 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 /**
- * NEW — Reflection / Self-Critique Node
+ * Format Enforcer Node (replaces the aggressive self-critique node)
  *
- * Sits between ResumeAnalyzerNode and SkillGapNode.
- * Reviews the analyzer's output and corrects any hallucinations,
- * unjustified scores, or missing grounding before passing downstream.
+ * The previous reflection node rewrote scores and added verbose commentary
+ * ("Corrected changes: 1. 2. 3...") which broke downstream parsing.
  *
- * Graph position: analyze_resume → [reflect_resume] → identify_skill_gaps
+ * This version does ONE thing only:
+ *   - If output already starts with FIT_SCORE → pass it through unchanged.
+ *   - If output has preamble/commentary wrapped around it → strip to clean block.
+ *   - Content (scores, keywords, strengths) is NEVER altered.
+ *
+ * Graph: analyze_resume → enforce_format → identify_skill_gaps
  */
 @Component
 public class ResumeReflectionNode implements NodeAction<JobAssistState> {
@@ -29,37 +33,29 @@ public class ResumeReflectionNode implements NodeAction<JobAssistState> {
 
     @Override
     public Map<String, Object> apply(JobAssistState state) throws Exception {
-        String resume   = state.resumeText().orElse("");
-        String jobDesc  = state.jobDescription().orElse("");
         String analysis = state.resumeAnalysis().orElse("");
 
+        // Fast path — already clean, skip the LLM call entirely
+        if (analysis.trim().startsWith("FIT_SCORE")) {
+            return Map.of("resumeAnalysis", analysis);
+        }
+
+        // Slow path — strip preamble/commentary without changing values
         String prompt = """
-                You are a critical reviewer checking an AI resume analysis for accuracy.
+                The text below is a resume analysis that contains extra commentary, preamble,
+                or numbered explanations wrapped around the actual analysis block.
 
-                ORIGINAL RESUME:
+                Your ONLY job: extract the block that starts with FIT_SCORE: and ends after
+                KEYWORD_GAPS:. Return that block exactly as written — do not change any values,
+                scores, keywords, or wording. Remove everything outside the block.
+
+                TEXT:
                 %s
+                """.formatted(analysis);
 
-                JOB DESCRIPTION:
-                %s
-
-                AI ANALYSIS TO REVIEW:
-                %s
-
-                Your task — check each claim in the analysis:
-                1. Is the FIT_SCORE justified by actual evidence? If not, correct it.
-                2. Are all STRENGTHS actually present word-for-word in the resume? Remove any that are not.
-                3. Are KEYWORD_MATCHES genuinely in the resume? Remove false matches.
-                4. Are KEYWORD_GAPS actually required by the job description? Remove ones that aren't.
-
-                If the analysis is accurate, return it unchanged.
-                If there are errors, return the corrected version in the EXACT SAME FORMAT.
-                No commentary — just the (possibly corrected) analysis block.
-                """.formatted(resume, jobDesc, analysis);
-
-        String verified = chatModel.call(new Prompt(prompt, PromptOptions.analytical()))
+        String cleaned = chatModel.call(new Prompt(prompt, PromptOptions.analytical()))
                 .getResult().getOutput().getText();
 
-        // Overwrite resumeAnalysis with the verified (possibly corrected) version
-        return Map.of("resumeAnalysis", verified);
+        return Map.of("resumeAnalysis", cleaned.trim());
     }
 }
