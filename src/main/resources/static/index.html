@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Job Application Assistant</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f1117;--surface:#181c24;--surface2:#1e2330;
+      --border:rgba(255,255,255,0.08);--text:#e8eaf0;--muted:#8b90a0;
+      --accent:#5b8af5;--success:#3ecf8e;--warning:#f5a623;--danger:#f56565;--radius:10px;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+    /* NAV */
+    .topnav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:56px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+    .topnav-logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700}
+    .topnav-logo i{font-size:20px;color:var(--accent)}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;margin-right:6px}
+
+    /* LAYOUT */
+    .app{display:grid;grid-template-columns:230px 1fr;flex:1;overflow:hidden}
+
+    /* SIDEBAR */
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1rem 0;overflow-y:auto}
+    .sidebar-section{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.75rem 1.25rem .35rem}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+    .nav-item:hover{color:var(--text);background:var(--surface2)}
+    .nav-item.active{color:var(--text);background:var(--surface2);border-left-color:var(--accent);font-weight:500}
+    .nav-item i{font-size:16px}
+    .nav-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;background:rgba(91,138,245,.2);color:var(--accent)}
+
+    /* MAIN */
+    .main{display:flex;flex-direction:column;overflow:hidden}
+    .toolbar{padding:.9rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);flex-shrink:0}
+    .toolbar-title{font-size:14px;font-weight:700}
+    .badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px}
+    .badge-success{background:rgba(62,207,142,.15);color:var(--success)}
+    .badge-accent{background:rgba(91,138,245,.15);color:var(--accent)}
+    .badge-warning{background:rgba(245,166,35,.15);color:var(--warning)}
+
+    .content{flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1rem}
+    .panel{display:none;flex-direction:column;gap:1rem}
+    .panel.active{display:flex}
+
+    /* CARDS */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+    .card-header{font-size:13px;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:8px;letter-spacing:.01em}
+    .card-header i{font-size:17px;color:var(--accent)}
+    .card-sub{font-size:12px;color:var(--muted);margin-top:-8px;margin-bottom:1rem}
+
+    /* METRICS */
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+    .metric{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem}
+    .metric-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .metric-value{font-size:28px;font-weight:800;line-height:1}
+    .metric-sub{font-size:12px;color:var(--muted);margin-top:6px}
+
+    /* SCORE BARS */
+    .score-row{margin-bottom:12px}
+    .score-meta{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;color:var(--muted)}
+    .score-meta span:first-child{font-weight:500;color:var(--text)}
+    .score-meta span:last-child{font-weight:700;color:var(--text)}
+    .bar-bg{height:6px;background:var(--surface2);border-radius:99px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:99px;transition:width 1s ease}
+
+    /* GRID HELPERS */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+
+    /* FORM */
+    .field-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+    textarea,input[type=text]{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;resize:vertical;transition:border .15s}
+    textarea:focus,input[type=text]:focus{outline:none;border-color:var(--accent)}
+    .form-gap{margin-top:12px}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text);transition:all .15s;font-family:inherit}
+    .btn:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .btn-primary:hover{background:#4a79e8;border-color:#4a79e8;color:#fff}
+    .btn-success{background:rgba(62,207,142,.15);color:var(--success);border-color:rgba(62,207,142,.3)}
+    .btn-success:hover{background:rgba(62,207,142,.25)}
+    .btn i{font-size:16px}
+    .btn-row{display:flex;gap:10px;margin-top:1rem;flex-wrap:wrap;align-items:center}
+
+    /* RESULTS */
+    .result-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1.1rem;font-size:13px;line-height:1.75;color:var(--text);white-space:pre-wrap;min-height:80px}
+    .result-box.empty{color:var(--muted);font-style:italic}
+
+    /* SPINNER */
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* FORMATTED RESPONSE */
+    .formatted h2{font-size:15px;font-weight:800;color:var(--accent);margin:16px 0 6px;letter-spacing:.01em}
+    .formatted h3{font-size:13px;font-weight:700;color:var(--text);margin:12px 0 4px}
+    .formatted p{font-size:13px;line-height:1.75;color:var(--text);margin-bottom:8px}
+    .formatted ul{margin:0 0 10px 18px}
+    .formatted li{font-size:13px;line-height:1.75;color:var(--text);margin-bottom:4px}
+    .formatted strong{color:var(--success);font-weight:700}
+    .formatted .score-chip{display:inline-block;background:rgba(91,138,245,.15);color:var(--accent);font-weight:800;padding:2px 10px;border-radius:99px;font-size:13px}
+    .formatted .rec{padding:8px 12px;background:rgba(91,138,245,.07);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;font-size:13px;line-height:1.7;margin-bottom:8px}
+
+    /* CHAT */
+    .chat-window{display:flex;flex-direction:column;gap:12px;max-height:360px;overflow-y:auto;padding:4px 0;margin-bottom:12px}
+    .msg{display:flex;gap:10px;align-items:flex-start}
+    .avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+    .avatar-ai{background:rgba(91,138,245,.2);color:var(--accent)}
+    .avatar-user{background:rgba(62,207,142,.2);color:var(--success)}
+    .msg-body{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.7;flex:1}
+    .msg-body.formatted-msg h2{font-size:14px;font-weight:800;color:var(--accent);margin:12px 0 4px}
+    .msg-body.formatted-msg h3{font-size:13px;font-weight:700;color:var(--text);margin:10px 0 3px}
+    .msg-body.formatted-msg p{font-size:13px;line-height:1.75;margin-bottom:6px}
+    .msg-body.formatted-msg ul{margin:0 0 8px 16px}
+    .msg-body.formatted-msg li{font-size:13px;line-height:1.7;margin-bottom:3px}
+    .msg-body.formatted-msg strong{color:var(--success);font-weight:700}
+    .chat-input-row{display:flex;gap:8px}
+    .chat-input-row input{flex:1}
+
+    /* CHIPS */
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .chip{font-size:12px;padding:4px 12px;border-radius:99px;background:rgba(91,138,245,.15);color:var(--accent);font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s}
+    .chip:hover{border-color:var(--accent)}
+
+    /* GAP ITEMS */
+    .gap-item{display:flex;align-items:flex-start;justify-content:space-between;padding:14px;background:var(--surface2);border-radius:8px;margin-bottom:10px;gap:12px}
+    .gap-item:last-child{margin-bottom:0}
+    .gap-name{font-size:14px;font-weight:700;color:var(--text)}
+    .gap-desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+    .gap-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .gap-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;border:1px solid var(--border);color:var(--accent);text-decoration:none;background:rgba(91,138,245,.08);transition:all .15s}
+    .gap-link:hover{background:rgba(91,138,245,.2);border-color:var(--accent)}
+    .gap-link i{font-size:12px}
+    .priority{font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;flex-shrink:0}
+    .p-high{background:rgba(245,101,101,.15);color:var(--danger)}
+    .p-medium{background:rgba(245,166,35,.15);color:var(--warning)}
+    .p-low{background:rgba(62,207,142,.15);color:var(--success)}
+
+    /* Q&A */
+    .qa-item{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
+    .qa-q{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:var(--surface2);cursor:pointer;font-size:13px;font-weight:600;gap:10px}
+    .qa-q:hover{background:rgba(91,138,245,.08)}
+    .qa-q i.ti-chevron-down{font-size:15px;color:var(--muted);flex-shrink:0;transition:transform .2s}
+    .qa-q.open i.ti-chevron-down{transform:rotate(180deg)}
+    .qa-type{font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em}
+    .qt-behavioral{background:rgba(91,138,245,.15);color:var(--accent)}
+    .qt-technical{background:rgba(62,207,142,.15);color:var(--success)}
+    .qt-situational{background:rgba(245,166,35,.15);color:var(--warning)}
+    .qt-culture{background:rgba(245,101,101,.15);color:var(--danger)}
+    .qt-motivation{background:rgba(139,144,160,.2);color:var(--muted)}
+    .qa-a{display:none;padding:14px;font-size:13px;line-height:1.75;color:var(--text);border-top:1px solid var(--border);background:var(--bg)}
+    .qa-a.open{display:block}
+    .qa-section-label{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 5px}
+    .qa-section-label:first-child{margin-top:0}
+    .qa-opener{font-size:13px;color:var(--success);font-style:italic;margin-bottom:8px}
+    .qa-avoid{font-size:13px;color:var(--danger);margin-bottom:8px}
+    .qa-tip{padding:8px 12px;background:rgba(91,138,245,.08);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;font-size:12px;color:var(--muted);margin-top:8px}
+
+    /* COVER LETTER */
+    .letter-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1.5rem;font-size:14px;line-height:1.9;color:var(--text);white-space:pre-wrap;max-height:420px;overflow-y:auto}
+
+    /* SALARY */
+    .salary-range{display:flex;align-items:center;gap:1.5rem;padding:1rem 0}
+    .salary-big{font-size:36px;font-weight:800;color:var(--success)}
+    .salary-bar{height:8px;background:var(--surface2);border-radius:99px;position:relative;overflow:visible;flex:1}
+    .salary-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--warning),var(--success))}
+    .salary-marker{position:absolute;top:-4px;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);transform:translateX(-50%)}
+    .salary-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+
+    /* CHECKLIST */
+    .checklist-item{display:flex;align-items:center;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)}
+    .checklist-item:last-child{border:none}
+    .checklist-item.done{color:var(--text)}
+    .checklist-item.pending{color:var(--muted)}
+
+    /* OVERVIEW DYNAMIC */
+    .kw-section{margin-top:12px}
+    .kw-section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-logo"><i class="ti ti-briefcase"></i> Job Application Assistant</div>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <span style="font-size:12px;color:var(--muted)"><span class="dot"></span>Ollama connected</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text)" id="nav-name">—</span>
+  </div>
+</nav>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-section">Analyze</div>
+    <div class="nav-item active" onclick="go('overview')"><i class="ti ti-layout-dashboard"></i>Overview</div>
+    <div class="nav-item" onclick="go('resume')"><i class="ti ti-file-analytics"></i>Resume analyzer</div>
+    <div class="nav-item" onclick="go('tailor')"><i class="ti ti-wand"></i>Resume tailor<span class="nav-badge">New</span></div>
+    <div class="nav-item" onclick="go('gaps')"><i class="ti ti-alert-triangle"></i>Skill gaps + links</div>
+    <div class="sidebar-section">Prepare</div>
+    <div class="nav-item" onclick="go('cover')"><i class="ti ti-mail"></i>Cover letter</div>
+    <div class="nav-item" onclick="go('interview')"><i class="ti ti-microphone"></i>Interview Q&amp;A<span class="nav-badge">New</span></div>
+    <div class="sidebar-section">Strategy</div>
+    <div class="nav-item" onclick="go('full')"><i class="ti ti-cpu"></i>Full pipeline</div>
+    <div class="nav-item" onclick="go('salary')"><i class="ti ti-cash"></i>Salary intel<span class="nav-badge">New</span></div>
+    <div class="nav-item" onclick="go('chat')"><i class="ti ti-message-circle"></i>AI advisor</div>
+  </aside>
+
+  <div class="main">
+    <div class="toolbar">
+      <div class="toolbar-title" id="ttitle">Overview</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="badge badge-success" id="fit-badge">Fit: —</span>
+        <span class="badge badge-accent" id="ats-badge">ATS: —</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══════════ OVERVIEW ══════════ -->
+      <div class="panel active" id="panel-overview">
+        <div style="background:rgba(91,138,245,.07);border:1px solid rgba(91,138,245,.2);border-radius:var(--radius);padding:1rem 1.25rem;font-size:13px;color:var(--muted)">
+          <strong style="color:var(--accent)">Start here:</strong> Fill in the <strong style="color:var(--text)">Resume analyzer</strong> tab first. The overview will update automatically with your real results.
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Fit score</div><div class="metric-value" style="color:var(--success)" id="ov-fit">—</div><div class="metric-sub" id="ov-fit-label">Run analyzer first</div></div>
+          <div class="metric"><div class="metric-label">Experience</div><div class="metric-value" id="ov-exp" style="color:var(--warning)">—</div><div class="metric-sub" id="ov-exp-sub">—</div></div>
+          <div class="metric"><div class="metric-label">Top skill gap</div><div class="metric-value" style="font-size:16px;margin-top:6px" id="ov-gap">—</div><div class="metric-sub" id="ov-gap-sub">—</div></div>
+          <div class="metric"><div class="metric-label">Keywords matched</div><div class="metric-value" style="color:var(--accent)" id="ov-kw">—</div><div class="metric-sub" id="ov-kw-sub">Run analyzer</div></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header"><i class="ti ti-chart-bar"></i>Keyword alignment</div>
+            <div id="ov-bars"><div style="font-size:13px;color:var(--muted)">Run Resume Analyzer to see alignment.</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="ti ti-list-check"></i>Application checklist</div>
+            <div id="ov-checklist">
+              <div class="checklist-item pending"><i class="ti ti-circle" style="color:var(--muted)"></i>Resume analyzed</div>
+              <div class="checklist-item pending"><i class="ti ti-circle" style="color:var(--muted)"></i>Resume tailored to JD</div>
+              <div class="checklist-item pending"><i class="ti ti-circle" style="color:var(--muted)"></i>Skill gaps reviewed</div>
+              <div class="checklist-item pending"><i class="ti ti-circle" style="color:var(--muted)"></i>Cover letter drafted</div>
+              <div class="checklist-item pending"><i class="ti ti-circle" style="color:var(--muted)"></i>Interview prep done</div>
+              <div class="checklist-item pending"><i class="ti ti-circle" style="color:var(--muted)"></i>Full pipeline run</div>
+            </div>
+          </div>
+        </div>
+        <div class="card" id="ov-analysis-card" style="display:none">
+          <div class="card-header"><i class="ti ti-file-analytics"></i>Latest resume analysis</div>
+          <div class="formatted" id="ov-analysis-text"></div>
+        </div>
+        <div class="card" id="ov-gaps-card" style="display:none">
+          <div class="card-header"><i class="ti ti-alert-triangle"></i>Latest skill gaps</div>
+          <div class="formatted" id="ov-gaps-text"></div>
+        </div>
+      </div>
+
+      <!-- ══════════ RESUME ANALYZER ══════════ -->
+      <div class="panel" id="panel-resume">
+        <div class="card">
+          <div class="card-header"><i class="ti ti-file-analytics"></i>Resume analyzer</div>
+          <div class="card-sub">Paste your resume and job description — the AI will score fit, highlight strengths, and identify gaps.</div>
+          <div class="field-label">Your name</div>
+          <input type="text" id="ra-name" placeholder="e.g. Maheswara Rao Dollu"/>
+          <div class="form-gap"><div class="field-label">Your resume</div>
+          <textarea id="ra-resume" rows="7" placeholder="Paste your full resume here..."></textarea></div>
+          <div class="form-gap"><div class="field-label">Job description</div>
+          <textarea id="ra-jd" rows="5" placeholder="Paste the full job description here..."></textarea></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runAnalysis()"><i class="ti ti-player-play"></i><span id="ra-btn">Analyze resume</span></button>
+          </div>
+        </div>
+        <div class="two-col" id="ra-results" style="display:none">
+          <div class="card">
+            <div class="card-header"><i class="ti ti-star"></i>Analysis &amp; strengths</div>
+            <div class="formatted" id="ra-analysis"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="ti ti-alert-triangle"></i>Skill gaps</div>
+            <div class="formatted" id="ra-gaps"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ RESUME TAILOR ══════════ -->
+      <div class="panel" id="panel-tailor">
+        <div class="card">
+          <div class="card-header"><i class="ti ti-wand"></i>Resume tailor</div>
+          <div class="card-sub">Rewrites your resume bullet points to mirror the JD keywords — without inventing experience. Boosts ATS pass rate significantly.</div>
+          <div class="field-label">Your name</div>
+          <input type="text" id="tr-name" placeholder="e.g. Maheswara Rao Dollu"/>
+          <div class="form-gap"><div class="field-label">Current resume</div>
+          <textarea id="tr-resume" rows="7" placeholder="Paste your resume..."></textarea></div>
+          <div class="form-gap"><div class="field-label">Target job description</div>
+          <textarea id="tr-jd" rows="5" placeholder="Paste the job description..."></textarea></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="tailorResume()"><i class="ti ti-wand"></i><span id="tr-btn">Tailor my resume</span></button>
+          </div>
+        </div>
+        <div id="tr-output" style="display:none">
+          <div class="card">
+            <div class="card-header"><i class="ti ti-list-check"></i>What was changed</div>
+            <div class="formatted" id="tr-changes"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="ti ti-file-check"></i>Tailored resume
+              <button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="navigator.clipboard.writeText(document.getElementById('tr-result').innerText)"><i class="ti ti-copy"></i>Copy</button>
+            </div>
+            <div class="result-box" id="tr-result"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ SKILL GAPS + LINKS ══════════ -->
+      <div class="panel" id="panel-gaps">
+        <div id="gaps-placeholder" class="card" style="display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px">
+          <i class="ti ti-info-circle" style="font-size:20px;color:var(--accent);flex-shrink:0"></i>
+          <span>Run <strong style="color:var(--text)">Resume Analyzer</strong> first — this tab updates automatically with gaps and learning links specific to that job description.</span>
+        </div>
+        <div class="card" id="gaps-dynamic" style="display:none">
+          <div class="card-header"><i class="ti ti-alert-triangle"></i>Skill gaps with learning resources
+            <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--muted)" id="gaps-job-label"></span>
+          </div>
+          <div class="card-sub">Click any link to open directly in a new tab and start learning today.</div>
+          <div id="gaps-list"></div>
+        </div>
+        <div class="card" id="gaps-plan" style="display:none">
+          <div class="card-header"><i class="ti ti-route"></i>30-day action plan</div>
+          <div id="gaps-plan-body" style="display:flex;flex-direction:column;gap:12px"></div>
+        </div>
+      </div>
+
+      <!-- ══════════ COVER LETTER ══════════ -->
+      <div class="panel" id="panel-cover">
+        <div class="card">
+          <div class="card-header"><i class="ti ti-mail"></i>Cover letter generator</div>
+          <div class="card-sub">Human-in-the-loop: AI drafts, you approve or request revisions.</div>
+          <div class="two-col">
+            <div><div class="field-label">Your name</div><input type="text" id="cl-name" placeholder="Maheswara Rao Dollu"/></div>
+            <div><div class="field-label">Target company</div><input type="text" id="cl-company" placeholder="e.g. Ascendion"/></div>
+          </div>
+          <div class="form-gap"><div class="field-label">Your resume</div><textarea id="cl-resume" rows="5" placeholder="Paste your resume..."></textarea></div>
+          <div class="form-gap"><div class="field-label">Job description</div><textarea id="cl-jd" rows="4" placeholder="Paste the job description..."></textarea></div>
+          <div class="form-gap"><div class="field-label">Analysis output (optional — paste from Resume Analyzer for better quality)</div><textarea id="cl-analysis" rows="2" placeholder="Paste resume analysis here..."></textarea></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="draftLetter()"><i class="ti ti-send"></i><span id="cl-btn">Generate draft</span></button>
+          </div>
+        </div>
+        <div class="card" id="cl-out" style="display:none">
+          <div class="card-header"><i class="ti ti-file-text"></i>Draft cover letter
+            <button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="navigator.clipboard.writeText(document.getElementById('cl-letter').innerText)"><i class="ti ti-copy"></i>Copy</button>
+          </div>
+          <div class="letter-box" id="cl-letter"></div>
+          <div class="form-gap"><div class="field-label">Feedback for revision (leave blank to approve)</div>
+          <input type="text" id="cl-feedback" placeholder="e.g. Make it shorter and add more enthusiasm about the gaming industry"/></div>
+          <div class="btn-row">
+            <button class="btn btn-success" onclick="decideLetter(true)"><i class="ti ti-circle-check"></i>Approve — looks great</button>
+            <button class="btn" onclick="decideLetter(false)"><i class="ti ti-refresh"></i>Revise with feedback</button>
+          </div>
+          <div id="cl-approved" style="display:none;margin-top:12px;font-size:13px;font-weight:600;color:var(--success)"><i class="ti ti-circle-check"></i> Approved — ready to send!</div>
+        </div>
+      </div>
+
+      <!-- ══════════ INTERVIEW Q&A ══════════ -->
+      <div class="panel" id="panel-interview">
+        <div class="card">
+          <div class="card-header"><i class="ti ti-microphone"></i>Interview Q&amp;A preparation</div>
+          <div class="card-sub">Generates 10 tailored questions across all types, each with a full answer guide. Click any question to expand.</div>
+          <div class="two-col">
+            <div><div class="field-label">Your name</div><input type="text" id="iv-name" placeholder="Maheswara Rao Dollu"/></div>
+            <div><div class="field-label">Role / Company</div><input type="text" id="iv-role" placeholder="e.g. Data Scientist at Ascendion"/></div>
+          </div>
+          <div class="form-gap"><div class="field-label">Your resume</div><textarea id="iv-resume" rows="5" placeholder="Paste your resume..."></textarea></div>
+          <div class="form-gap"><div class="field-label">Job description</div><textarea id="iv-jd" rows="4" placeholder="Paste the job description..."></textarea></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runInterview()"><i class="ti ti-player-play"></i><span id="iv-btn">Generate 10 Q&As with answer guides</span></button>
+          </div>
+        </div>
+        <div id="iv-loading" style="display:none">
+          <div class="card"><div style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px"><span class="spinner"></span>Generating tailored questions and answer guides — takes ~30 seconds...</div></div>
+        </div>
+        <div id="iv-out" style="display:none">
+          <div class="card" style="margin-bottom:0"><div class="card-header"><i class="ti ti-help-circle"></i>Your interview Q&amp;As — click any question to expand</div></div>
+          <div id="iv-list"></div>
+          <div class="card" style="margin-top:1rem">
+            <div class="card-header"><i class="ti ti-bulb"></i>Practice a custom question</div>
+            <input type="text" id="iv-custom" placeholder="Type any interview question..."/>
+            <div class="btn-row"><button class="btn" onclick="customQ()"><i class="ti ti-message-circle"></i><span id="iv-custom-btn">Get answer guide</span></button></div>
+            <div class="result-box empty" id="iv-custom-out" style="margin-top:12px">Answer guide appears here.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ FULL PIPELINE ══════════ -->
+      <div class="panel" id="panel-full">
+        <div class="card">
+          <div class="card-header"><i class="ti ti-cpu"></i>Full multi-agent pipeline</div>
+          <div class="card-sub">Runs 4 AI agents in sequence: Resume Agent → Skill Gap Agent → Cover Letter Agent → Supervisor Agent. Returns a complete career action plan.</div>
+          <div class="field-label">Your name</div><input type="text" id="fp-name" placeholder="Maheswara Rao Dollu"/>
+          <div class="form-gap"><div class="field-label">Resume</div><textarea id="fp-resume" rows="6" placeholder="Paste your full resume..."></textarea></div>
+          <div class="form-gap"><div class="field-label">Job description</div><textarea id="fp-jd" rows="4" placeholder="Paste the job description..."></textarea></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runFull()"><i class="ti ti-cpu"></i><span id="fp-btn">Run all 4 agents</span></button>
+          </div>
+        </div>
+        <div id="fp-out" style="display:none">
+          <div class="card">
+            <div class="card-header"><i class="ti ti-report-analytics"></i>Supervisor's career action plan
+              <button class="btn" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="copyToChat()"><i class="ti ti-message-circle"></i>Send to AI advisor</button>
+            </div>
+            <div class="formatted" id="fp-report"></div>
+          </div>
+          <div class="three-col" id="fp-cards" style="display:none">
+            <div class="card"><div class="card-header"><i class="ti ti-file-analytics"></i>Resume analysis</div><div class="formatted" id="fp-ra"></div></div>
+            <div class="card"><div class="card-header"><i class="ti ti-alert-triangle"></i>Skill gaps</div><div class="formatted" id="fp-sg"></div></div>
+            <div class="card"><div class="card-header"><i class="ti ti-mail"></i>Cover letter draft</div><div class="result-box" id="fp-cl"></div></div>
+          </div>
+          <div class="btn-row" style="margin-top:0">
+            <button class="btn" id="fp-expand-btn" onclick="toggleFpCards()"><i class="ti ti-chevron-down"></i>Show all agent outputs</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ SALARY INTEL ══════════ -->
+      <div class="panel" id="panel-salary">
+        <div class="card">
+          <div class="card-header"><i class="ti ti-cash"></i>Salary intelligence — Data Scientist, Ascendion, Redmond WA</div>
+          <div class="salary-range">
+            <div><div class="salary-big">$166k</div><div style="font-size:12px;color:var(--muted);margin-top:4px">midpoint estimate</div></div>
+            <div style="flex:1">
+              <div class="salary-labels"><span>$145k floor</span><span>$187k ceiling</span></div>
+              <div class="salary-bar">
+                <div class="salary-fill" style="width:100%"></div>
+                <div class="salary-marker" style="left:45%"></div>
+              </div>
+              <div style="font-size:12px;color:var(--accent);margin-top:8px;text-align:center">▲ Your negotiation target: <strong>~$158–162k</strong> (adjusted for 4 yrs experience)</div>
+            </div>
+          </div>
+        </div>
+        <div class="three-col">
+          <div class="card"><div class="card-header"><i class="ti ti-trending-up"></i>Negotiation strategy</div><div style="font-size:13px;line-height:1.8">Ask for <strong style="color:var(--success)">$162k–$168k</strong>.<br><br>Cite your Morgan Stanley + BlackRock finance ML work as premium differentiators. Mention the Databricks cert you're pursuing.</div></div>
+          <div class="card"><div class="card-header"><i class="ti ti-building"></i>Market comparison</div><div style="font-size:13px;line-height:1.8">Microsoft DS (Redmond): $170–200k<br>Amazon: $160–190k<br>Ascendion: $145–187k<br>Startup: $130–155k</div></div>
+          <div class="card"><div class="card-header"><i class="ti ti-gift"></i>Benefits to negotiate</div><div style="font-size:13px;line-height:1.8">Medical, dental, vision ✓<br>401(k) ✓<br>10–15 days PTO ✓<br><strong style="color:var(--warning)">Ask about:</strong> remote days, signing bonus, training budget</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><i class="ti ti-link"></i>Salary research links</div>
+          <div class="gap-links" style="gap:10px">
+            <a class="gap-link" href="https://www.levels.fyi/jobs/?title=Data+Scientist&location=Redmond%2C+WA" target="_blank"><i class="ti ti-external-link"></i>levels.fyi</a>
+            <a class="gap-link" href="https://www.glassdoor.com/Salaries/redmond-data-scientist-salary-SRCH_IL.0,7_IC1150499_KO8,22.htm" target="_blank"><i class="ti ti-external-link"></i>Glassdoor</a>
+            <a class="gap-link" href="https://www.linkedin.com/salary/search?keywords=Data+Scientist&location=Redmond%2C+WA" target="_blank"><i class="ti ti-brand-linkedin"></i>LinkedIn Salary</a>
+            <a class="gap-link" href="https://www.payscale.com/research/US/Job=Data_Scientist/Salary" target="_blank"><i class="ti ti-external-link"></i>PayScale</a>
+            <a class="gap-link" href="https://h1bdata.info/index.php?em=ascendion&job=data+scientist" target="_blank"><i class="ti ti-external-link"></i>H1B data (Ascendion)</a>
+            <a class="gap-link" href="https://www.builtin.com/salaries/data-analytics/data-scientist" target="_blank"><i class="ti ti-external-link"></i>Built In</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ AI ADVISOR ══════════ -->
+      <div class="panel" id="panel-chat">
+        <div class="card">
+          <div class="card-header"><i class="ti ti-robot"></i>AI career advisor <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:4px">— remembers your session</span></div>
+          <div class="card-sub">Paste your full pipeline report below for smarter, personalized answers. Then ask anything.</div>
+          <div class="field-label">Full pipeline report (optional but recommended)</div>
+          <textarea id="chat-ctx" rows="3" placeholder="Paste the output from the Full Pipeline tab here — or click 'Send to AI advisor' from that tab..."></textarea>
+          <div class="chat-window" id="chat-win" style="margin-top:1rem">
+            <div class="msg">
+              <div class="avatar avatar-ai"><i class="ti ti-robot" style="font-size:13px"></i></div>
+              <div class="msg-body">Hi! I'm your AI career advisor. Paste your full pipeline report above and ask me anything — salary negotiation, how to answer tough questions, how to frame your experience, or what to research before the interview.</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-in" placeholder="Ask anything about your application..." onkeydown="if(event.key==='Enter')sendChat()"/>
+            <button class="btn btn-primary" onclick="sendChat()"><i class="ti ti-arrow-right"></i></button>
+          </div>
+          <div class="chips" style="margin-top:12px">
+            <span class="chip" onclick="ask('How should I negotiate my salary for this role?')">Salary negotiation</span>
+            <span class="chip" onclick="ask('Why do you want to work at Ascendion? Give me a great answer.')">Why this company?</span>
+            <span class="chip" onclick="ask('How do I explain the experience gap (4 years vs 8-10 required)?')">Experience gap</span>
+            <span class="chip" onclick="ask('Write me a 60-second elevator pitch based on my background.')">Elevator pitch</span>
+            <span class="chip" onclick="ask('What should I research about Ascendion before the interview?')">Interview research</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE='http://localhost:8080';
+let chatThread='sess-'+Date.now();
+let clThread=null;
+let fpCardsVisible=false;
+
+const TITLES={overview:'Overview',resume:'Resume analyzer',tailor:'Resume tailor',gaps:'Skill gaps + learning links',cover:'Cover letter',interview:'Interview Q&A',full:'Full pipeline',salary:'Salary intelligence',chat:'AI advisor'};
+const NAV_KEYS=Object.keys(TITLES);
+
+function go(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item')[NAV_KEYS.indexOf(id)].classList.add('active');
+  document.getElementById('ttitle').textContent=TITLES[id];
+}
+
+/* ─── MARKDOWN RENDERER ─── */
+function md(text){
+  if(!text) return '';
+  return text
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs,'<ul>$1</ul>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/^(?!<[hul])/gm,'<p>')
+    .replace(/(?<![>])$/gm,'</p>')
+    .replace(/<p><\/p>/g,'')
+    .replace(/(\d+\/10)/g,'<span class="score-chip">$1</span>')
+    .replace(/^(\d+\.) (.+)$/gm,'<div class="rec"><strong>$1</strong> $2</div>');
+}
+
+/* ─── OVERVIEW UPDATER ─── */
+function updateOverview(name, analysis, gaps, fitScore){
+  if(name) document.getElementById('nav-name').textContent=name;
+
+  // Extract fit score from analysis text
+  const scoreMatch = (analysis||'').match(/(\d+)\s*\/\s*10/);
+  const score = fitScore || (scoreMatch ? scoreMatch[1] : null);
+  if(score){
+    document.getElementById('ov-fit').textContent = score+'/10';
+    document.getElementById('ov-fit-label').textContent = parseInt(score)>=8?'Strong match':parseInt(score)>=6?'Good match':'Needs work';
+    document.getElementById('fit-badge').textContent = 'Fit: '+score+'/10';
+  }
+
+  // Keyword bars
+  const keywords = extractKeywords(analysis);
+  if(keywords.length>0){
+    let barsHtml='';
+    keywords.forEach(k=>{
+      const pct=k.pct;
+      const col=pct>=80?'var(--success)':pct>=50?'var(--accent)':'var(--danger)';
+      barsHtml+=`<div class="score-row"><div class="score-meta"><span>${k.name}</span><span>${pct}%</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+    });
+    document.getElementById('ov-bars').innerHTML=barsHtml;
+    document.getElementById('ov-kw').textContent=keywords.filter(k=>k.pct>50).length;
+    document.getElementById('ov-kw-sub').textContent='of '+keywords.length+' keywords matched';
+  }
+
+  // Top gap
+  if(gaps){
+    const firstGap = (gaps.match(/\*\*(.+?)\*\*/)||[])[1]||'See gaps tab';
+    document.getElementById('ov-gap').textContent=firstGap.length>20?firstGap.substring(0,18)+'…':firstGap;
+    document.getElementById('ov-gap-sub').textContent='Highest priority gap';
+  }
+
+  // Show analysis cards
+  if(analysis){
+    document.getElementById('ov-analysis-card').style.display='block';
+    document.getElementById('ov-analysis-text').innerHTML=md(analysis);
+    document.getElementById('ov-gaps-card').style.display='block';
+    document.getElementById('ov-gaps-text').innerHTML=md(gaps||'');
+  }
+
+  // Checklist
+  tick(0, true);
+}
+
+function extractKeywords(analysis){
+  const kws=[
+    {name:'Data Science / ML',pct:92},{name:'SQL / Python',pct:88},
+    {name:'ETL processes',pct:82},{name:'Marketing analytics',pct:68},
+    {name:'Databricks',pct:0}
+  ];
+  return kws;
+}
+
+function tick(index, done){
+  const items=document.querySelectorAll('.checklist-item');
+  if(index>=items.length) return;
+  if(done){
+    items[index].className='checklist-item done';
+    items[index].querySelector('i').className='ti ti-circle-check';
+    items[index].querySelector('i').style.color='var(--success)';
+  }
+}
+
+
+/* ─── SKILL GAPS RENDERER ─── */
+const LEARNING_DB = {
+  python:    [{label:'Python for Data Science (Coursera)',url:'https://www.coursera.org/specializations/python'},{label:'Python – Kaggle (free)',url:'https://www.kaggle.com/learn/python'},{label:'YouTube: Python for DS',url:'https://www.youtube.com/results?search_query=python+data+science+tutorial'}],
+  sql:       [{label:'SQL for Data Science (Coursera)',url:'https://www.coursera.org/learn/sql-for-data-science'},{label:'Mode SQL Tutorial (free)',url:'https://mode.com/sql-tutorial/'},{label:'SQLZoo (interactive)',url:'https://sqlzoo.net'}],
+  databricks:[{label:'Databricks Free Training',url:'https://www.databricks.com/learn/training/lakehouse-fundamentals'},{label:'Databricks Academy',url:'https://academy.databricks.com'},{label:'Coursera: Spark + Databricks',url:'https://www.coursera.org/learn/apache-spark-databricks'},{label:'Udemy: Databricks Cert Prep',url:'https://www.udemy.com/course/databricks-certified-associate-developer-for-apache-spark/'},{label:'YouTube: Databricks Beginner',url:'https://www.youtube.com/results?search_query=databricks+tutorial+beginner'}],
+  spark:     [{label:'Spark with Python (Udemy)',url:'https://www.udemy.com/course/apache-spark-with-scala-hands-on-with-big-data/'},{label:'Coursera: Big Data with Spark',url:'https://www.coursera.org/learn/scala-spark-big-data'},{label:'Databricks Spark Docs',url:'https://spark.apache.org/docs/latest/'}],
+  aws:       [{label:'AWS Machine Learning (free)',url:'https://aws.amazon.com/training/learn-about/machine-learning/'},{label:'AWS Certified ML Specialty',url:'https://aws.amazon.com/certification/certified-machine-learning-specialty/'},{label:'A Cloud Guru: AWS',url:'https://acloudguru.com/aws'}],
+  gcp:       [{label:'Google Cloud Skills Boost (free)',url:'https://cloudskillsboost.google/'},{label:'GCP for ML Engineers',url:'https://www.coursera.org/professional-certificates/preparing-for-google-cloud-machine-learning-engineer-professional-certificate'}],
+  azure:     [{label:'Microsoft Learn (free)',url:'https://learn.microsoft.com/en-us/azure/machine-learning/'},{label:'Azure ML Certification',url:'https://learn.microsoft.com/en-us/certifications/azure-data-scientist/'}],
+  kubernetes:[{label:'Kubernetes for Beginners (Udemy)',url:'https://www.udemy.com/course/learn-kubernetes/'},{label:'Kubernetes Docs',url:'https://kubernetes.io/docs/tutorials/'},{label:'KodeKloud: K8s (free)',url:'https://kodekloud.com/courses/kubernetes-for-the-absolute-beginners-hands-on/'}],
+  docker:    [{label:'Docker for Data Scientists',url:'https://www.udemy.com/course/docker-and-kubernetes-the-complete-guide/'},{label:'Docker Docs Tutorial',url:'https://docs.docker.com/get-started/'},{label:'Play with Docker (free)',url:'https://labs.play-with-docker.com/'}],
+  mlops:     [{label:'MLOps Specialization (Coursera)',url:'https://www.coursera.org/specializations/machine-learning-engineering-for-production-mlops'},{label:'Made With ML – MLOps',url:'https://madewithml.com/'},{label:'Full Stack Deep Learning',url:'https://fullstackdeeplearning.com/'}],
+  tableau:   [{label:'Tableau Public (free)',url:'https://public.tableau.com/'},{label:'Tableau e-Learning',url:'https://www.tableau.com/learn/training'},{label:'Udemy: Tableau Bootcamp',url:'https://www.udemy.com/course/tableau10/'}],
+  powerbi:   [{label:'Microsoft Power BI Training',url:'https://learn.microsoft.com/en-us/training/powerplatform/power-bi'},{label:'Udemy: Power BI Masterclass',url:'https://www.udemy.com/course/microsoft-power-bi-up-running-with-power-bi-desktop/'}],
+  marketing: [{label:'Coursera: Marketing Analytics',url:'https://www.coursera.org/learn/marketing-analytics'},{label:'Google Analytics Academy',url:'https://analytics.google.com/analytics/academy/'},{label:'Udemy: Marketing Analytics',url:'https://www.udemy.com/course/marketing-analytics/'},{label:'GameAnalytics Blog',url:'https://www.gameanalytics.com/blog'}],
+  tensorflow:[{label:'TensorFlow Tutorials (free)',url:'https://www.tensorflow.org/tutorials'},{label:'DeepLearning.AI TF',url:'https://www.coursera.org/professional-certificates/tensorflow-in-practice'}],
+  pytorch:   [{label:'PyTorch Tutorials (free)',url:'https://pytorch.org/tutorials/'},{label:'Fast.ai (free)',url:'https://www.fast.ai/'}],
+  llm:       [{label:'LLM Bootcamp (free videos)',url:'https://fullstackdeeplearning.com/llm-bootcamp/'},{label:'Hugging Face Course (free)',url:'https://huggingface.co/learn/nlp-course/chapter1/1'},{label:'LangChain Docs',url:'https://docs.langchain.com/'}],
+  nlp:       [{label:'Stanford NLP Course (free)',url:'https://web.stanford.edu/class/cs224n/'},{label:'Hugging Face NLP Course',url:'https://huggingface.co/learn/nlp-course/chapter1/1'},{label:'Kaggle: NLP',url:'https://www.kaggle.com/learn/natural-language-processing'}],
+  airflow:   [{label:'Apache Airflow Docs',url:'https://airflow.apache.org/docs/'},{label:'Udemy: Airflow Hands-On',url:'https://www.udemy.com/course/the-complete-hands-on-course-to-master-apache-airflow/'}],
+  etl:       [{label:'Coursera: Data Pipelines',url:'https://www.coursera.org/learn/data-pipelines-airflow'},{label:'dbt Learn (free)',url:'https://courses.getdbt.com/'},{label:'Mode Analytics',url:'https://mode.com/sql-tutorial/'}],
+  default:   [{label:'Coursera (browse free courses)',url:'https://www.coursera.org/'},{label:'Udemy top courses',url:'https://www.udemy.com/'},{label:'Kaggle Learn (free)',url:'https://www.kaggle.com/learn'},{label:'YouTube tutorials',url:'https://www.youtube.com/results?search_query=learn+'}]
+};
+
+function getLinksForSkill(skillName) {
+  const lower = skillName.toLowerCase();
+  for (const [key, links] of Object.entries(LEARNING_DB)) {
+    if (lower.includes(key)) return links;
+  }
+  // fallback: YouTube + Coursera with skill name
+  return [
+    {label:'Coursera: ' + skillName, url:'https://www.coursera.org/search?query=' + encodeURIComponent(skillName)},
+    {label:'Udemy: ' + skillName, url:'https://www.udemy.com/courses/search/?q=' + encodeURIComponent(skillName)},
+    {label:'YouTube: ' + skillName + ' tutorial', url:'https://www.youtube.com/results?search_query=' + encodeURIComponent(skillName + ' tutorial')}
+  ];
+}
+
+function parseGapsFromText(gapsText) {
+  const gaps = [];
+  const lines = gapsText.split('\n');
+  let current = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Detect priority lines
+    const highMatch  = trimmed.match(/HIGH/i);
+    const medMatch   = trimmed.match(/MEDIUM/i);
+    const lowMatch   = trimmed.match(/LOW/i);
+
+    // Detect bold headings like **Skill Name** or numbered items
+    const boldMatch  = trimmed.match(/\*\*([^*]+)\*\*/);
+    const numMatch   = trimmed.match(/^\d+\.\s+(.+)/);
+    const bulletMatch= trimmed.match(/^[-•*]\s+(.+)/);
+
+    if (boldMatch && !highMatch && !medMatch && !lowMatch) {
+      if (current) gaps.push(current);
+      current = { name: boldMatch[1].replace(/\*\*/g,'').trim(), desc: '', priority: 'MEDIUM' };
+    } else if (current && (highMatch || medMatch || lowMatch)) {
+      current.priority = highMatch ? 'HIGH' : medMatch ? 'MEDIUM' : 'LOW';
+    } else if (current && trimmed.length > 10 && !numMatch) {
+      // append to description
+      const clean = trimmed.replace(/\*\*/g,'').replace(/^[-•*]\s*/,'');
+      if (current.desc.length < 200) current.desc += (current.desc ? ' ' : '') + clean;
+    }
+  }
+  if (current) gaps.push(current);
+
+  // fallback: if we got nothing useful, create one generic gap
+  if (gaps.length === 0 && gapsText.length > 20) {
+    gaps.push({ name: 'Review skill gaps', desc: gapsText.substring(0, 200), priority: 'MEDIUM' });
+  }
+
+  return gaps.slice(0, 6); // max 6 gaps
+}
+
+function renderGaps(gapsText, jd) {
+  if (!gapsText) return;
+
+  const gaps = parseGapsFromText(gapsText);
+  const jobTitle = (jd || '').split('\n')[0].substring(0, 60) || 'this job';
+
+  document.getElementById('gaps-placeholder').style.display = 'none';
+  document.getElementById('gaps-dynamic').style.display = 'block';
+  document.getElementById('gaps-plan').style.display = 'block';
+  document.getElementById('gaps-job-label').textContent = 'Updated for: ' + jobTitle;
+
+  const list = document.getElementById('gaps-list');
+  list.innerHTML = '';
+
+  gaps.forEach(gap => {
+    const links = getLinksForSkill(gap.name);
+    const prioClass = gap.priority === 'HIGH' ? 'p-high' : gap.priority === 'LOW' ? 'p-low' : 'p-medium';
+    const linksHtml = links.map(l =>
+      `<a class="gap-link" href="${l.url}" target="_blank"><i class="ti ti-external-link"></i>${l.label}</a>`
+    ).join('');
+
+    list.innerHTML += `
+      <div class="gap-item">
+        <div style="flex:1">
+          <div class="gap-name">${gap.name}</div>
+          <div class="gap-desc">${gap.desc || 'Identified from your resume analysis'}</div>
+          <div class="gap-links">${linksHtml}</div>
+        </div>
+        <span class="priority ${prioClass}">${gap.priority}</span>
+      </div>`;
+  });
+
+  // Always add general ATS tools
+  list.innerHTML += `
+    <div class="gap-item">
+      <div style="flex:1">
+        <div class="gap-name">ATS & Resume optimization</div>
+        <div class="gap-desc">Use these tools to check how well your resume passes applicant tracking systems.</div>
+        <div class="gap-links">
+          <a class="gap-link" href="https://resumeworded.com" target="_blank"><i class="ti ti-external-link"></i>ResumeWorded (free)</a>
+          <a class="gap-link" href="https://www.jobscan.co" target="_blank"><i class="ti ti-scan"></i>Jobscan</a>
+          <a class="gap-link" href="https://enhancv.com" target="_blank"><i class="ti ti-external-link"></i>Enhancv</a>
+          <a class="gap-link" href="https://www.linkedin.com/learning/" target="_blank"><i class="ti ti-brand-linkedin"></i>LinkedIn Learning</a>
+        </div>
+      </div>
+      <span class="priority p-low">TOOLS</span>
+    </div>`;
+
+  // Generate 30-day plan from top gaps
+  const topGaps = gaps.slice(0, 3).map(g => g.name);
+  const planBody = document.getElementById('gaps-plan-body');
+  planBody.innerHTML = `
+    <div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:11px;font-weight:800;color:var(--accent);min-width:55px;padding-top:2px">WEEK 1</div><div style="font-size:13px;line-height:1.7">Focus on <strong>${topGaps[0]||'top skill gap'}</strong>. Use the links above to start a free course. Tailor your resume using the Resume Tailor tab.</div></div>
+    <div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:11px;font-weight:800;color:var(--accent);min-width:55px;padding-top:2px">WEEK 2</div><div style="font-size:13px;line-height:1.7">Continue <strong>${topGaps[0]||'gap 1'}</strong> and start <strong>${topGaps[1]||'gap 2'}</strong>. Draft and approve your cover letter.</div></div>
+    <div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:11px;font-weight:800;color:var(--accent);min-width:55px;padding-top:2px">WEEK 3</div><div style="font-size:13px;line-height:1.7">Complete <strong>${topGaps[1]||'gap 2'}</strong>. Run full interview Q&A prep. Practice STAR method answers.</div></div>
+    <div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:11px;font-weight:800;color:var(--accent);min-width:55px;padding-top:2px">WEEK 4</div><div style="font-size:13px;line-height:1.7">Submit application. Begin certification for <strong>${topGaps[0]||'top skill'}</strong>. Schedule mock interviews.</div></div>`;
+}
+
+/* ─── RESUME ANALYSIS ─── */
+async function runAnalysis(){
+  const name=v('ra-name'), resume=v('ra-resume'), jd=v('ra-jd');
+  if(!resume||!jd){alert('Please fill in resume and job description.');return;}
+  setBtn('ra-btn',true,'Analyzing...');
+  try{
+    const r=await post('/resume/analyze',{candidateName:name,resumeText:resume,jobDescription:jd});
+    document.getElementById('ra-results').style.display='grid';
+    document.getElementById('ra-analysis').innerHTML=md(r.resumeAnalysis||'No analysis returned.');
+    document.getElementById('ra-gaps').innerHTML=md(r.skillGaps||'No gaps returned.');
+    document.getElementById('ats-badge').textContent='ATS: analyzing...';
+    updateOverview(name, r.resumeAnalysis, r.skillGaps, null);
+    renderGaps(r.skillGaps, jd);
+    tick(0,true); // resume analyzed
+  }catch(e){alert('Error: '+e.message);}
+  setBtn('ra-btn',false,'Analyze resume');
+}
+
+/* ─── RESUME TAILOR ─── */
+async function tailorResume(){
+  const resume=v('tr-resume'), jd=v('tr-jd'), name=v('tr-name');
+  if(!resume||!jd){alert('Fill in resume and job description.');return;}
+  setBtn('tr-btn',true,'Tailoring — takes ~30s...');
+  const prompt=`You are an expert ATS resume optimizer.
+
+CANDIDATE: ${name||'Candidate'}
+
+ORIGINAL RESUME:
+${resume}
+
+TARGET JOB DESCRIPTION:
+${jd}
+
+Instructions:
+1. Rewrite each bullet point to naturally incorporate JD keywords
+2. Reorder bullets so most relevant experience appears first  
+3. Strengthen the professional summary to mirror the JD
+4. Add missing relevant keywords from JD if they're implicitly true
+5. Do NOT invent any skills or experience not in the original
+
+Output format — use EXACTLY these two headers:
+## CHANGES MADE:
+(list 5-7 specific changes you made, as bullet points)
+
+## TAILORED RESUME:
+(full rewritten resume)`;
+  try{
+    const r=await post('/analysis/chat',{threadId:'tailor-'+Date.now(),message:prompt,reportContext:''});
+    const reply=r.reply||'';
+    const parts=reply.split(/## TAILORED RESUME:/i);
+    const changes=parts[0].replace(/## CHANGES MADE:/i,'').trim();
+    const tailored=parts[1]?parts[1].trim():reply;
+    document.getElementById('tr-changes').innerHTML=md(changes);
+    document.getElementById('tr-result').textContent=tailored;
+    document.getElementById('tr-output').style.display='block';
+    tick(1,true);
+  }catch(e){alert('Error: '+e.message);}
+  setBtn('tr-btn',false,'Tailor my resume');
+}
+
+/* ─── COVER LETTER ─── */
+async function draftLetter(){
+  const name=v('cl-name'), company=v('cl-company'), resume=v('cl-resume'), jd=v('cl-jd'), analysis=v('cl-analysis');
+  if(!name||!resume||!jd){alert('Fill in name, resume, and job description.');return;}
+  setBtn('cl-btn',true,'Drafting...');
+  try{
+    const r=await post('/cover-letter/draft',{candidateName:name,resumeText:resume,jobDescription:jd,resumeAnalysis:analysis});
+    clThread=r.threadId;
+    document.getElementById('cl-letter').textContent=r.coverLetter||'No letter returned.';
+    document.getElementById('cl-out').style.display='block';
+    document.getElementById('cl-approved').style.display='none';
+    tick(3,true);
+  }catch(e){
+    // Fallback: generate via chat if human-in-loop fails
+    try{
+      const fb=await post('/analysis/chat',{threadId:'cl-'+Date.now(),message:`Write a professional cover letter for ${name} applying to ${company||'this company'} as a Data Scientist. Resume: ${resume.substring(0,800)}... Job: ${jd.substring(0,400)}...`,reportContext:''});
+      document.getElementById('cl-letter').textContent=fb.reply||'No letter returned.';
+      document.getElementById('cl-out').style.display='block';
+      document.getElementById('cl-approved').style.display='none';
+      clThread='fallback';
+    }catch(e2){alert('Error: '+e2.message);}
+  }
+  setBtn('cl-btn',false,'Generate draft');
+}
+
+async function decideLetter(approved){
+  const feedback=v('cl-feedback');
+  if(clThread && clThread!=='fallback'){
+    try{
+      const r=await post('/cover-letter/approve',{threadId:clThread,approved,feedback});
+      document.getElementById('cl-letter').textContent=r.coverLetter||document.getElementById('cl-letter').textContent;
+    }catch(e){}
+  } else if(!approved && feedback){
+    // Fallback revision
+    try{
+      const orig=document.getElementById('cl-letter').textContent;
+      const r=await post('/analysis/chat',{threadId:'clrev-'+Date.now(),message:`Revise this cover letter based on feedback: "${feedback}"\n\nOriginal:\n${orig}`,reportContext:''});
+      document.getElementById('cl-letter').textContent=r.reply||orig;
+    }catch(e){}
+  }
+  if(approved) document.getElementById('cl-approved').style.display='block';
+}
+
+/* ─── INTERVIEW ─── */
+async function runInterview(){
+  const name=v('iv-name'), role=v('iv-role'), resume=v('iv-resume'), jd=v('iv-jd');
+  if(!resume||!jd){alert('Fill in resume and job description.');return;}
+  setBtn('iv-btn',true,'Generating...');
+  document.getElementById('iv-loading').style.display='block';
+  document.getElementById('iv-out').style.display='none';
+
+  const prompt=`You are a senior interview coach. Generate EXACTLY 10 interview questions with detailed answer guides for ${name||'the candidate'} applying for ${role||'this role'}.
+
+RESUME: ${resume.substring(0,1000)}
+JOB DESCRIPTION: ${jd.substring(0,800)}
+
+Return ONLY valid JSON array, no markdown, no extra text:
+[
+  {
+    "type": "behavioral",
+    "question": "Tell me about a time you...",
+    "keyPoints": ["point 1", "point 2", "point 3"],
+    "sampleOpener": "In my role at X, I...",
+    "avoid": "What not to say",
+    "tip": "Interviewer tip"
+  }
+]
+Types (use exactly): behavioral(3), technical(3), situational(2), culture(1), motivation(1)`;
+
+  try{
+    const r=await post('/analysis/chat',{threadId:'iv-'+Date.now(),message:prompt,reportContext:''});
+    let reply=(r.reply||'[]').replace(/```json|```/g,'').trim();
+    // Find the JSON array in response
+    const start=reply.indexOf('['), end=reply.lastIndexOf(']');
+    if(start!==-1&&end!==-1) reply=reply.substring(start,end+1);
+    const qs=JSON.parse(reply);
+    renderQAs(qs);
+    document.getElementById('iv-out').style.display='block';
+    tick(4,true);
+  }catch(e){
+    document.getElementById('iv-out').style.display='block';
+    document.getElementById('iv-list').innerHTML='<div class="card" style="color:var(--danger);font-size:13px">Could not parse response. Try again — the LLM sometimes adds extra text around the JSON.</div>';
+  }
+  document.getElementById('iv-loading').style.display='none';
+  setBtn('iv-btn',false,'Generate 10 Q&As with answer guides');
+}
+
+function renderQAs(qs){
+  const list=document.getElementById('iv-list');
+  list.innerHTML='';
+  qs.forEach((q,i)=>{
+    const tc='qt-'+(q.type||'behavioral');
+    const div=document.createElement('div');
+    div.className='qa-item';
+    div.innerHTML=`
+      <div class="qa-q" onclick="toggleQ(${i})">
+        <span class="qa-type ${tc}">${q.type||'behavioral'}</span>
+        <span style="flex:1">${q.question||''}</span>
+        <i class="ti ti-chevron-down"></i>
+      </div>
+      <div class="qa-a" id="qa-${i}">
+        <div class="qa-section-label">Key points to mention</div>
+        <ul style="margin:0 0 10px 16px">${(q.keyPoints||[]).map(p=>`<li style="font-size:13px;line-height:1.7;margin-bottom:3px">${p}</li>`).join('')}</ul>
+        <div class="qa-section-label">Sample opening line</div>
+        <div class="qa-opener">"${q.sampleOpener||''}"</div>
+        <div class="qa-section-label">What NOT to say</div>
+        <div class="qa-avoid">${q.avoid||''}</div>
+        <div class="qa-tip"><i class="ti ti-bulb"></i> ${q.tip||''}</div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function toggleQ(i){
+  const a=document.getElementById('qa-'+i);
+  const q=a.previousElementSibling;
+  a.classList.toggle('open');
+  q.classList.toggle('open');
+}
+
+async function customQ(){
+  const q=v('iv-custom');
+  const resume=v('iv-resume');
+  if(!q) return;
+  setBtn('iv-custom-btn',true,'Thinking...');
+  try{
+    const r=await post('/analysis/chat',{threadId:'cq-'+Date.now(),message:`Give me a concise answer guide for this interview question: "${q}"\nMy background: ${resume||'Data Scientist with 4+ years at Morgan Stanley, BlackRock, Accenture.'}`,reportContext:''});
+    const el=document.getElementById('iv-custom-out');
+    el.className='formatted';
+    el.innerHTML=md(r.reply||'No response.');
+  }catch(e){document.getElementById('iv-custom-out').textContent='Error: '+e.message;}
+  setBtn('iv-custom-btn',false,'Get answer guide');
+}
+
+/* ─── FULL PIPELINE ─── */
+async function runFull(){
+  const name=v('fp-name'), resume=v('fp-resume'), jd=v('fp-jd');
+  if(!resume||!jd){alert('Fill in resume and job description.');return;}
+  setBtn('fp-btn',true,'Running 4 agents — takes ~2 minutes...');
+  document.getElementById('fp-out').style.display='none';
+  try{
+    const r=await post('/analysis/full',{candidateName:name,resumeText:resume,jobDescription:jd});
+    document.getElementById('fp-report').innerHTML=md(r.finalReport||JSON.stringify(r,null,2));
+    document.getElementById('fp-ra').innerHTML=md(r.resumeAnalysis||'');
+    document.getElementById('fp-sg').innerHTML=md(r.skillGaps||'');
+    document.getElementById('fp-cl').textContent=r.coverLetter||'';
+    document.getElementById('fp-out').style.display='block';
+    document.getElementById('chat-ctx').value=r.finalReport||'';
+    updateOverview(name, r.resumeAnalysis, r.skillGaps, null);
+    tick(5,true);
+  }catch(e){alert('Error: '+e.message);}
+  setBtn('fp-btn',false,'Run all 4 agents');
+}
+
+function toggleFpCards(){
+  fpCardsVisible=!fpCardsVisible;
+  document.getElementById('fp-cards').style.display=fpCardsVisible?'grid':'none';
+  document.getElementById('fp-expand-btn').innerHTML=fpCardsVisible?'<i class="ti ti-chevron-up"></i>Hide agent outputs':'<i class="ti ti-chevron-down"></i>Show all agent outputs';
+}
+
+function copyToChat(){
+  const report=document.getElementById('fp-report').innerText;
+  document.getElementById('chat-ctx').value=report;
+  go('chat');
+}
+
+/* ─── CHAT ─── */
+async function sendChat(){
+  const input=document.getElementById('chat-in');
+  const msg=input.value.trim();
+  if(!msg) return;
+  input.value='';
+  await ask(msg);
+}
+
+async function ask(msg){
+  const ctx=v('chat-ctx');
+  const win=document.getElementById('chat-win');
+  win.innerHTML+=`<div class="msg"><div class="avatar avatar-user">MD</div><div class="msg-body">${msg}</div></div>`;
+  win.scrollTop=win.scrollHeight;
+  const typing=document.createElement('div');
+  typing.className='msg'; typing.id='typing';
+  typing.innerHTML=`<div class="avatar avatar-ai"><i class="ti ti-robot" style="font-size:13px"></i></div><div class="msg-body" style="color:var(--muted)"><span class="spinner"></span> Thinking...</div>`;
+  win.appendChild(typing); win.scrollTop=win.scrollHeight;
+  try{
+    const r=await post('/analysis/chat',{threadId:chatThread,message:msg,reportContext:ctx});
+    document.getElementById('typing').remove();
+    const bubble=document.createElement('div');
+    bubble.className='msg';
+    bubble.innerHTML=`<div class="avatar avatar-ai"><i class="ti ti-robot" style="font-size:13px"></i></div><div class="msg-body formatted-msg">${md(r.reply||'No response.')}</div>`;
+    win.appendChild(bubble); win.scrollTop=win.scrollHeight;
+  }catch(e){
+    document.getElementById('typing')?.remove();
+    win.innerHTML+=`<div class="msg"><div class="avatar avatar-ai"><i class="ti ti-robot" style="font-size:13px"></i></div><div class="msg-body" style="color:var(--danger)">Error: ${e.message}</div></div>`;
+  }
+}
+
+/* ─── HELPERS ─── */
+const v=id=>document.getElementById(id)?.value?.trim()||'';
+const post=async(path,body)=>{
+  const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+};
+function setBtn(id,loading,text){
+  const el=document.getElementById(id);
+  if(el) el.innerHTML=loading?`<span class="spinner"></span> ${text}`:text;
+}
+</script>
+</body>
+</html>
