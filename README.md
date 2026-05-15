@@ -130,7 +130,6 @@ mvn spring-boot:run
 ```
 
 App starts at **http://localhost:8080**
-Studio UI at **http://localhost:8080/studio**
 
 You'll see this in the console:
 
