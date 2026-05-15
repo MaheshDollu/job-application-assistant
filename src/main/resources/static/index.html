@@ -130,6 +130,11 @@
     .gap-item:last-child{margin-bottom:0}
     .gap-name{font-size:14px;font-weight:700;color:var(--text)}
     .gap-desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+    .gap-reason{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;background:rgba(245,166,35,.06);border-left:2px solid var(--warning);padding:5px 8px;border-radius:0 4px 4px 0}
+    .gap-fix{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.6;background:rgba(62,207,142,.06);border-left:2px solid var(--success);padding:5px 8px;border-radius:0 4px 4px 0}
+    .gap-field-label{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+    .gap-reason .gap-field-label{color:var(--warning)}
+    .gap-fix .gap-field-label{color:var(--success)}
     .gap-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
     .gap-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;border:1px solid var(--border);color:var(--accent);text-decoration:none;background:rgba(91,138,245,.08);transition:all .15s}
     .gap-link:hover{background:rgba(91,138,245,.2);border-color:var(--accent)}
@@ -507,18 +512,49 @@ function go(id){
 /* ─── MARKDOWN RENDERER ─── */
 function md(text){
   if(!text) return '';
-  return text
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs,'<ul>$1</ul>')
-    .replace(/\n\n/g,'</p><p>')
-    .replace(/^(?!<[hul])/gm,'<p>')
-    .replace(/(?<![>])$/gm,'</p>')
-    .replace(/<p><\/p>/g,'')
-    .replace(/(\d+\/10)/g,'<span class="score-chip">$1</span>')
-    .replace(/^(\d+\.) (.+)$/gm,'<div class="rec"><strong>$1</strong> $2</div>');
+  let html = '';
+  const lines = text.split('\n');
+  let inUl = false;
+
+  for (let raw of lines) {
+    const line = raw.trim();
+    if (!line) { if (inUl) { html += '</ul>'; inUl = false; } html += '<br>'; continue; }
+
+    // Structured analysis fields — render as bold label + value
+    const structMatch = line.match(/^(FIT_SCORE|JUSTIFICATION|STRENGTHS|KEYWORD_MATCHES|KEYWORD_GAPS|PRIORITY|GAP|REASON|FIX|VERDICT|REASONING):\s*(.*)/i);
+    if (structMatch) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      const label = structMatch[1].replace(/_/g,' ');
+      const val   = structMatch[2];
+      const labelColor =
+        label === 'FIT SCORE'        ? 'var(--accent)'  :
+        label === 'KEYWORD MATCHES'  ? 'var(--success)' :
+        label === 'KEYWORD GAPS'     ? 'var(--danger)'  :
+        label === 'VERDICT'          ? 'var(--warning)'  : 'var(--muted)';
+      const valHtml = val ? ' ' + val.replace(/(\d+\/10)/g,'<span class="score-chip">$1</span>') : '';
+      html += `<div style="margin:5px 0;font-size:13px"><span style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:${labelColor}">${label}</span>${valHtml}</div>`;
+      continue;
+    }
+
+    // ## heading
+    if (line.startsWith('## ')) { if (inUl) { html += '</ul>'; inUl = false; } html += `<h2>${line.slice(3)}</h2>`; continue; }
+    // ### heading
+    if (line.startsWith('### ')) { if (inUl) { html += '</ul>'; inUl = false; } html += `<h3>${line.slice(4)}</h3>`; continue; }
+    // bullet
+    if (/^[-*•]\s/.test(line)) {
+      if (!inUl) { html += '<ul>'; inUl = true; }
+      html += '<li>' + line.replace(/^[-*•]\s+/,'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>') + '</li>';
+      continue;
+    }
+    // numbered list → rec block
+    const numM = line.match(/^(\d+)\.\s+(.+)/);
+    if (numM) { if (inUl) { html += '</ul>'; inUl = false; } html += `<div class="rec"><strong>${numM[1]}.</strong> ${numM[2].replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div>`; continue; }
+    // plain paragraph
+    if (inUl) { html += '</ul>'; inUl = false; }
+    html += '<p>' + line.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(\d+\/10)/g,'<span class="score-chip">$1</span>') + '</p>';
+  }
+  if (inUl) html += '</ul>';
+  return html;
 }
 
 /* ─── OVERVIEW UPDATER ─── */
@@ -608,6 +644,10 @@ const LEARNING_DB = {
   nlp:       [{label:'Stanford NLP Course (free)',url:'https://web.stanford.edu/class/cs224n/'},{label:'Hugging Face NLP Course',url:'https://huggingface.co/learn/nlp-course/chapter1/1'},{label:'Kaggle: NLP',url:'https://www.kaggle.com/learn/natural-language-processing'}],
   airflow:   [{label:'Apache Airflow Docs',url:'https://airflow.apache.org/docs/'},{label:'Udemy: Airflow Hands-On',url:'https://www.udemy.com/course/the-complete-hands-on-course-to-master-apache-airflow/'}],
   etl:       [{label:'Coursera: Data Pipelines',url:'https://www.coursera.org/learn/data-pipelines-airflow'},{label:'dbt Learn (free)',url:'https://courses.getdbt.com/'},{label:'Mode Analytics',url:'https://mode.com/sql-tutorial/'}],
+  'reinforcement learning': [{label:'Deep RL Course – HuggingFace (free)',url:'https://huggingface.co/learn/deep-rl-course/unit0/introduction'},{label:'Spinning Up in Deep RL – OpenAI',url:'https://spinningup.openai.com/en/latest/'},{label:'Coursera: RL Specialization',url:'https://www.coursera.org/specializations/reinforcement-learning'},{label:'YouTube: RL from Scratch',url:'https://www.youtube.com/results?search_query=reinforcement+learning+tutorial'}],
+  'ml infrastructure': [{label:'Made With ML – MLOps',url:'https://madewithml.com/'},{label:'MLOps Specialization (Coursera)',url:'https://www.coursera.org/specializations/machine-learning-engineering-for-production-mlops'},{label:'Full Stack Deep Learning',url:'https://fullstackdeeplearning.com/'},{label:'Weights & Biases Courses (free)',url:'https://www.wandb.courses/'}],
+  'generative ai': [{label:'Google Generative AI Learning Path (free)',url:'https://www.cloudskillsboost.google/paths/118'},{label:'Coursera: Generative AI with LLMs',url:'https://www.coursera.org/learn/generative-ai-with-llms'},{label:'DeepLearning.AI Short Courses (free)',url:'https://www.deeplearning.ai/short-courses/'},{label:'Hugging Face Agents Course',url:'https://huggingface.co/learn/agents-course/unit0/introduction'}],
+  'llm orchestration': [{label:'LangChain Docs & Tutorials',url:'https://docs.langchain.com/'},{label:'LlamaIndex Docs',url:'https://docs.llamaindex.ai/'},{label:'LLM Bootcamp – Full Stack (free)',url:'https://fullstackdeeplearning.com/llm-bootcamp/'},{label:'Hugging Face Transformers Course',url:'https://huggingface.co/learn/nlp-course/chapter1/1'}],
   default:   [{label:'Coursera (browse free courses)',url:'https://www.coursera.org/'},{label:'Udemy top courses',url:'https://www.udemy.com/'},{label:'Kaggle Learn (free)',url:'https://www.kaggle.com/learn'},{label:'YouTube tutorials',url:'https://www.youtube.com/results?search_query=learn+'}]
 };
 
@@ -633,35 +673,48 @@ function parseGapsFromText(gapsText) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Detect priority lines
-    const highMatch  = trimmed.match(/HIGH/i);
-    const medMatch   = trimmed.match(/MEDIUM/i);
-    const lowMatch   = trimmed.match(/LOW/i);
-
-    // Detect bold headings like **Skill Name** or numbered items
-    const boldMatch  = trimmed.match(/\*\*([^*]+)\*\*/);
-    const numMatch   = trimmed.match(/^\d+\.\s+(.+)/);
-    const bulletMatch= trimmed.match(/^[-•*]\s+(.+)/);
-
-    if (boldMatch && !highMatch && !medMatch && !lowMatch) {
+    // Primary format: GAP: Skill Name
+    const gapMatch = trimmed.match(/^GAP:\s*(.+)/i);
+    if (gapMatch) {
       if (current) gaps.push(current);
-      current = { name: boldMatch[1].replace(/\*\*/g,'').trim(), desc: '', priority: 'MEDIUM' };
-    } else if (current && (highMatch || medMatch || lowMatch)) {
-      current.priority = highMatch ? 'HIGH' : medMatch ? 'MEDIUM' : 'LOW';
-    } else if (current && trimmed.length > 10 && !numMatch) {
-      // append to description
-      const clean = trimmed.replace(/\*\*/g,'').replace(/^[-•*]\s*/,'');
-      if (current.desc.length < 200) current.desc += (current.desc ? ' ' : '') + clean;
+      current = { name: gapMatch[1].trim(), priority: 'MEDIUM', reason: '', fix: '' };
+      continue;
+    }
+
+    if (!current) continue;
+
+    const prioMatch   = trimmed.match(/^PRIORITY:\s*(.+)/i);
+    const reasonMatch = trimmed.match(/^REASON:\s*(.+)/i);
+    const fixMatch    = trimmed.match(/^FIX:\s*(.+)/i);
+
+    if (prioMatch) {
+      const p = prioMatch[1].toUpperCase();
+      current.priority = p.includes('HIGH') ? 'HIGH' : p.includes('LOW') ? 'LOW' : 'MEDIUM';
+    } else if (reasonMatch) {
+      current.reason = reasonMatch[1].trim();
+    } else if (fixMatch) {
+      current.fix = fixMatch[1].trim();
     }
   }
   if (current) gaps.push(current);
 
-  // fallback: if we got nothing useful, create one generic gap
-  if (gaps.length === 0 && gapsText.length > 20) {
-    gaps.push({ name: 'Review skill gaps', desc: gapsText.substring(0, 200), priority: 'MEDIUM' });
+  // Fallback: bold **Skill** format
+  if (gaps.length === 0) {
+    const boldRe = /\*\*([^*]+)\*\*/g;
+    let m;
+    while ((m = boldRe.exec(gapsText)) !== null) {
+      const after = gapsText.substring(m.index, m.index + 300);
+      const prio  = /HIGH/i.test(after) ? 'HIGH' : /LOW/i.test(after) ? 'LOW' : 'MEDIUM';
+      gaps.push({ name: m[1].trim(), priority: prio, reason: '', fix: '' });
+    }
   }
 
-  return gaps.slice(0, 6); // max 6 gaps
+  // Last fallback
+  if (gaps.length === 0 && gapsText.length > 20) {
+    gaps.push({ name: 'Review skill gaps', priority: 'MEDIUM', reason: gapsText.substring(0, 180), fix: '' });
+  }
+
+  return gaps.slice(0, 8);
 }
 
 function renderGaps(gapsText, jd) {
@@ -684,13 +737,16 @@ function renderGaps(gapsText, jd) {
     const linksHtml = links.map(l =>
       `<a class="gap-link" href="${l.url}" target="_blank"><i class="ti ti-external-link"></i>${l.label}</a>`
     ).join('');
+    const reasonHtml = gap.reason ? `<div class="gap-reason"><span class="gap-field-label">Why it matters:</span> ${gap.reason}</div>` : '';
+    const fixHtml    = gap.fix    ? `<div class="gap-fix"><span class="gap-field-label">How to fix:</span> ${gap.fix}</div>`       : '';
 
     list.innerHTML += `
       <div class="gap-item">
         <div style="flex:1">
           <div class="gap-name">${gap.name}</div>
-          <div class="gap-desc">${gap.desc || 'Identified from your resume analysis'}</div>
-          <div class="gap-links">${linksHtml}</div>
+          ${reasonHtml}
+          ${fixHtml}
+          <div class="gap-links" style="margin-top:10px">${linksHtml}</div>
         </div>
         <span class="priority ${prioClass}">${gap.priority}</span>
       </div>`;
