@@ -625,6 +625,7 @@ function tick(index, done){
 
 /* ─── SKILL GAPS RENDERER ─── */
 const LEARNING_DB = {
+  'c++':     [{label:'C++ for Programmers (Udacity)',url:'https://www.udacity.com/course/c-plus-plus-nanodegree--nd213'},{label:'LearnCpp.com (free)',url:'https://www.learncpp.com/'},{label:'Coursera: C++ For C Programmers',url:'https://www.coursera.org/learn/c-plus-plus-a'},{label:'YouTube: C++ Full Course',url:'https://www.youtube.com/results?search_query=c%2B%2B+full+course+beginner'}],
   python:    [{label:'Python for Data Science (Coursera)',url:'https://www.coursera.org/specializations/python'},{label:'Python – Kaggle (free)',url:'https://www.kaggle.com/learn/python'},{label:'YouTube: Python for DS',url:'https://www.youtube.com/results?search_query=python+data+science+tutorial'}],
   sql:       [{label:'SQL for Data Science (Coursera)',url:'https://www.coursera.org/learn/sql-for-data-science'},{label:'Mode SQL Tutorial (free)',url:'https://mode.com/sql-tutorial/'},{label:'SQLZoo (interactive)',url:'https://sqlzoo.net'}],
   databricks:[{label:'Databricks Free Training',url:'https://www.databricks.com/learn/training/lakehouse-fundamentals'},{label:'Databricks Academy',url:'https://academy.databricks.com'},{label:'Coursera: Spark + Databricks',url:'https://www.coursera.org/learn/apache-spark-databricks'},{label:'Udemy: Databricks Cert Prep',url:'https://www.udemy.com/course/databricks-certified-associate-developer-for-apache-spark/'},{label:'YouTube: Databricks Beginner',url:'https://www.youtube.com/results?search_query=databricks+tutorial+beginner'}],
@@ -653,8 +654,10 @@ const LEARNING_DB = {
 
 function getLinksForSkill(skillName) {
   const lower = skillName.toLowerCase();
+  // Exact / substring match against LEARNING_DB keys
   for (const [key, links] of Object.entries(LEARNING_DB)) {
-    if (lower.includes(key)) return links;
+    if (key === 'default') continue;
+    if (lower.includes(key) || key.includes(lower.replace(/[^a-z0-9 ]/g, '').trim())) return links;
   }
   // fallback: YouTube + Coursera with skill name
   return [
@@ -669,52 +672,86 @@ function parseGapsFromText(gapsText) {
   const lines = gapsText.split('\n');
   let current = null;
 
+  // JUNK patterns to skip entirely — AI sometimes adds these as a trailing "gap"
+  const JUNK_RE = /^(none|n\/a|no gaps?|not mentioned|no additional|no other|no skill|as required|as preferred)/i;
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Primary format: GAP: Skill Name
-    const gapMatch = trimmed.match(/^GAP:\s*(.+)/i);
+    // Match "GAP: SkillName"  OR  "GAP SkillName"  (colon optional — AI skips it sometimes)
+    const gapMatch = trimmed.match(/^GAP:?\s+(.+)/i);
     if (gapMatch) {
+      const name = gapMatch[1].trim();
+      // Skip junk lines like "GAP None mentioned in the job description..."
+      if (JUNK_RE.test(name) || name.length > 60) {
+        current = null; // stop accumulating into a junk gap
+        continue;
+      }
       if (current) gaps.push(current);
-      current = { name: gapMatch[1].trim(), priority: 'MEDIUM', reason: '', fix: '' };
+      current = { name, priority: 'MEDIUM', reason: '', fix: '' };
       continue;
     }
 
     if (!current) continue;
 
-    const prioMatch   = trimmed.match(/^PRIORITY:\s*(.+)/i);
-    const reasonMatch = trimmed.match(/^REASON:\s*(.+)/i);
-    const fixMatch    = trimmed.match(/^FIX:\s*(.+)/i);
+    // Match "PRIORITY: HIGH"  OR  "PRIORITY HIGH"
+    const prioMatch   = trimmed.match(/^PRIORITY:?\s+(.+)/i);
+    const reasonMatch = trimmed.match(/^REASON:?\s+(.+)/i);
+    const fixMatch    = trimmed.match(/^FIX:?\s+(.+)/i);
 
     if (prioMatch) {
       const p = prioMatch[1].toUpperCase();
       current.priority = p.includes('HIGH') ? 'HIGH' : p.includes('LOW') ? 'LOW' : 'MEDIUM';
     } else if (reasonMatch) {
-      current.reason = reasonMatch[1].trim();
+      // Skip junk reason lines too
+      if (!JUNK_RE.test(reasonMatch[1])) current.reason = reasonMatch[1].trim();
     } else if (fixMatch) {
-      current.fix = fixMatch[1].trim();
+      if (!JUNK_RE.test(fixMatch[1])) current.fix = fixMatch[1].trim();
     }
   }
-  if (current) gaps.push(current);
+  if (current && !JUNK_RE.test(current.name)) gaps.push(current);
 
   // Fallback: bold **Skill** format
   if (gaps.length === 0) {
     const boldRe = /\*\*([^*]+)\*\*/g;
     let m;
     while ((m = boldRe.exec(gapsText)) !== null) {
+      const name  = m[1].trim();
+      if (JUNK_RE.test(name) || name.length > 60) continue;
       const after = gapsText.substring(m.index, m.index + 300);
       const prio  = /HIGH/i.test(after) ? 'HIGH' : /LOW/i.test(after) ? 'LOW' : 'MEDIUM';
-      gaps.push({ name: m[1].trim(), priority: prio, reason: '', fix: '' });
+      gaps.push({ name, priority: prio, reason: '', fix: '' });
     }
   }
 
-  // Last fallback
-  if (gaps.length === 0 && gapsText.length > 20) {
-    gaps.push({ name: 'Review skill gaps', priority: 'MEDIUM', reason: gapsText.substring(0, 180), fix: '' });
-  }
+  // Filter out any surviving junk, de-duplicate, cap at 8
+  return gaps
+    .filter(g => g.name && !JUNK_RE.test(g.name) && g.name.length <= 60)
+    .filter((g, i, arr) => arr.findIndex(x => x.name.toLowerCase() === g.name.toLowerCase()) === i)
+    .slice(0, 8);
+}
 
-  return gaps.slice(0, 8);
+/* ─── INLINE SKILL GAPS (inside Resume Analyzer panel) ─── */
+function renderGapsInline(gapsText) {
+  if (!gapsText) return '<p style="color:var(--muted);font-size:13px">No gaps returned.</p>';
+  const gaps = parseGapsFromText(gapsText);
+  if (gaps.length === 0) return '<p style="color:var(--success);font-size:13px">✅ No significant skill gaps detected for this role.</p>';
+
+  return gaps.map(gap => {
+    const prioClass = gap.priority === 'HIGH' ? 'p-high' : gap.priority === 'LOW' ? 'p-low' : 'p-medium';
+    const prioIcon  = gap.priority === 'HIGH' ? 'ti-alert-circle' : gap.priority === 'LOW' ? 'ti-circle-check' : 'ti-alert-triangle';
+    const reasonHtml = gap.reason ? `<div class="gap-reason"><span class="gap-field-label">Why:</span> ${gap.reason}</div>` : '';
+    const fixHtml    = gap.fix    ? `<div class="gap-fix"><span class="gap-field-label">Fix:</span> ${gap.fix}</div>` : '';
+    return `
+      <div class="gap-item" style="margin-bottom:10px">
+        <div style="flex:1">
+          <div class="gap-name"><i class="ti ${prioIcon}" style="font-size:14px;margin-right:5px;vertical-align:-2px"></i>${gap.name}</div>
+          ${reasonHtml}${fixHtml}
+        </div>
+        <span class="priority ${prioClass}">${gap.priority}</span>
+      </div>`;
+  }).join('');
 }
 
 function renderGaps(gapsText, jd) {
@@ -787,7 +824,7 @@ async function runAnalysis(){
     const r=await post('/resume/analyze',{candidateName:name,resumeText:resume,jobDescription:jd});
     document.getElementById('ra-results').style.display='grid';
     document.getElementById('ra-analysis').innerHTML=md(r.resumeAnalysis||'No analysis returned.');
-    document.getElementById('ra-gaps').innerHTML=md(r.skillGaps||'No gaps returned.');
+    document.getElementById('ra-gaps').innerHTML=renderGapsInline(r.skillGaps||'');
     document.getElementById('ats-badge').textContent='ATS: analyzing...';
     updateOverview(name, r.resumeAnalysis, r.skillGaps, null);
     renderGaps(r.skillGaps, jd);
