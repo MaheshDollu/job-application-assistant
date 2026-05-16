@@ -9,10 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-/**
- * Skill Gap Node — fixed to enforce strict GAP:/PRIORITY:/REASON:/FIX: format
- * and never emit "None mentioned..." as a gap entry.
- */
 @Component
 public class SkillGapNode implements NodeAction<JobAssistState> {
 
@@ -29,38 +25,52 @@ public class SkillGapNode implements NodeAction<JobAssistState> {
         String analysis = state.resumeAnalysis().orElse("");
 
         String prompt = """
-                You are a technical skills gap analyst.
+                You are a senior engineering hiring manager identifying skill gaps for a candidate.
 
-                STRICT OUTPUT RULES — read carefully before responding:
-                - Output ONLY skill gap blocks. Nothing else. No preamble, no summary, no trailing sentences.
-                - If there are NO skill gaps, output exactly: NO_GAPS
-                - Each gap MUST use ALL FOUR fields below, each on its own line, each with a colon:
-                    GAP: [skill name only — max 5 words, no "None", no "N/A"]
+                STRICT OUTPUT RULES:
+                - Output ONLY gap blocks. No preamble, headers, or trailing commentary.
+                - If there are zero gaps, output exactly: NO_GAPS
+                - Every gap MUST include ALL FOUR fields, each on its own line, each with a colon:
+                    GAP: [2–4 word skill name ONLY — e.g. "CUDA Kernels", "PyTorch JIT", "Distributed Inference"]
                     PRIORITY: [HIGH | MEDIUM | LOW]
-                    REASON: [one sentence — why this specific skill is missing]
-                    FIX: [one concrete action — course, project, or certification]
-                - Do NOT write "None mentioned", "No additional gaps", "N/A" or any variation as a GAP entry.
-                - Do NOT add numbered explanations, headers, or commentary.
-                - Sort output: HIGH gaps first, then MEDIUM, then LOW.
+                    REASON: [one sentence — cite exact JD requirement and what the resume lacks]
+                    FIX: [one concrete action with timeline — specific course, project, or cert]
+                - GAP name rules:
+                    * Maximum 4 words
+                    * Use the SHORT common name: "CUDA Kernels" not "CUDA kernels or equivalent ML or low-level kernels"
+                    * Never write "None", "N/A", "No gaps"
+                - ALWAYS include an "Experience Level" gap if the JD requires 5+ years and the
+                  candidate has fewer than 4 years of professional (non-internship) experience.
+                - Sort: HIGH → MEDIUM → LOW
 
                 Priority definitions:
-                  HIGH   = explicitly required in JD and completely absent from resume
-                  MEDIUM = mentioned in JD, partially present or transferable skill exists
-                  LOW    = preferred/nice-to-have in JD and absent from resume
+                  HIGH   = explicitly REQUIRED by JD, completely absent from resume
+                  MEDIUM = mentioned in JD, transferable skill exists but not direct experience
+                  LOW    = preferred/nice-to-have in JD, not present in resume
 
-                --- EXAMPLE OF CORRECT OUTPUT ---
-                GAP: C++
+                --- CORRECT EXAMPLE ---
+                GAP: Experience Level
                 PRIORITY: HIGH
-                REASON: JD requires 2 years C++ experience; resume shows no C++ at all.
-                FIX: Complete LearnCpp.com free tutorial and build one C++ project (4–6 weeks).
+                REASON: JD requires 5+ years professional experience; resume shows ~1-2 years (student assistant + internships).
+                FIX: Target associate/mid-level roles first to build 3-5 years experience before re-applying.
 
-                GAP: Reinforcement Learning
+                GAP: CUDA Kernels
                 PRIORITY: MEDIUM
-                REASON: JD prefers RL experience; candidate has ML background but not RL specifically.
-                FIX: Complete HuggingFace Deep RL Course (free, 2–3 weeks).
+                REASON: JD prefers CUDA/low-level kernel experience; resume shows high-level ML frameworks only.
+                FIX: Complete NVIDIA DLI CUDA course (free, 2 weeks) and implement one custom kernel on GitHub.
+
+                GAP: Distributed Inference
+                PRIORITY: HIGH
+                REASON: JD requires distributed inference optimization; resume shows no multi-GPU or distributed work.
+                FIX: Run Llama 2 with torch.distributed across 2 GPUs on Colab, document throughput numbers.
+
+                GAP: PyTorch JIT
+                PRIORITY: LOW
+                REASON: JD lists PyTorch JIT/AOT tracing as preferred; resume mentions PyTorch but not compilation.
+                FIX: Complete PyTorch TorchScript tutorial (free, 3 days) and trace one existing model.
                 --- END EXAMPLE ---
 
-                RESUME ANALYSIS (verified):
+                RESUME ANALYSIS:
                 %s
 
                 FULL RESUME:
@@ -69,16 +79,13 @@ public class SkillGapNode implements NodeAction<JobAssistState> {
                 JOB DESCRIPTION:
                 %s
 
-                List every skill gap now using the exact format above.
+                List ALL gaps now in the exact format above.
                 """.formatted(analysis, resume, jobDesc);
 
         String gaps = chatModel.call(new Prompt(prompt, PromptOptions.analytical()))
                 .getResult().getOutput().getText();
 
-        // If model returned NO_GAPS sentinel, store empty string
-        if (gaps.trim().equals("NO_GAPS")) {
-            gaps = "";
-        }
+        if (gaps.trim().equals("NO_GAPS")) gaps = "";
 
         return Map.of("skillGaps", gaps);
     }

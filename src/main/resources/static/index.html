@@ -649,6 +649,16 @@ const LEARNING_DB = {
   'ml infrastructure': [{label:'Made With ML – MLOps',url:'https://madewithml.com/'},{label:'MLOps Specialization (Coursera)',url:'https://www.coursera.org/specializations/machine-learning-engineering-for-production-mlops'},{label:'Full Stack Deep Learning',url:'https://fullstackdeeplearning.com/'},{label:'Weights & Biases Courses (free)',url:'https://www.wandb.courses/'}],
   'generative ai': [{label:'Google Generative AI Learning Path (free)',url:'https://www.cloudskillsboost.google/paths/118'},{label:'Coursera: Generative AI with LLMs',url:'https://www.coursera.org/learn/generative-ai-with-llms'},{label:'DeepLearning.AI Short Courses (free)',url:'https://www.deeplearning.ai/short-courses/'},{label:'Hugging Face Agents Course',url:'https://huggingface.co/learn/agents-course/unit0/introduction'}],
   'llm orchestration': [{label:'LangChain Docs & Tutorials',url:'https://docs.langchain.com/'},{label:'LlamaIndex Docs',url:'https://docs.llamaindex.ai/'},{label:'LLM Bootcamp – Full Stack (free)',url:'https://fullstackdeeplearning.com/llm-bootcamp/'},{label:'Hugging Face Transformers Course',url:'https://huggingface.co/learn/nlp-course/chapter1/1'}],
+  cuda:      [{label:'NVIDIA DLI: CUDA Basics (free)',url:'https://learn.nvidia.com/courses/course-detail?course_id=course-v1:DLI+C-AC-01+V1'},{label:'CUDA Programming – Udemy',url:'https://www.udemy.com/course/cuda-programming/'},{label:'GPU Programming with CUDA (Coursera)',url:'https://www.coursera.org/learn/gpu-computing'},{label:'YouTube: CUDA C++ Tutorial',url:'https://www.youtube.com/results?search_query=cuda+c%2B%2B+programming+tutorial'}],
+  triton:    [{label:'Triton Lang Tutorials (official)',url:'https://triton-lang.org/main/getting-started/tutorials/index.html'},{label:'YouTube: Triton Kernel Writing',url:'https://www.youtube.com/results?search_query=triton+gpu+kernel+tutorial'},{label:'Fast.ai GPU Optimization',url:'https://www.fast.ai/'}],
+  vllm:      [{label:'vLLM Docs & Quickstart',url:'https://docs.vllm.ai/en/latest/getting_started/quickstart.html'},{label:'vLLM GitHub Examples',url:'https://github.com/vllm-project/vllm/tree/main/examples'},{label:'YouTube: vLLM Tutorial',url:'https://www.youtube.com/results?search_query=vllm+tutorial+llm+serving'}],
+  'distributed inference': [{label:'HuggingFace Accelerate Docs',url:'https://huggingface.co/docs/accelerate/index'},{label:'PyTorch Distributed Tutorial',url:'https://pytorch.org/tutorials/intermediate/dist_tuto.html'},{label:'DeepSpeed Tutorials (free)',url:'https://www.deepspeed.ai/tutorials/'},{label:'YouTube: Tensor Parallelism',url:'https://www.youtube.com/results?search_query=tensor+parallelism+pytorch+tutorial'}],
+  'pytorch jit': [{label:'TorchScript Intro (official)',url:'https://pytorch.org/docs/stable/jit.html'},{label:'PyTorch AOT Autograd Tutorial',url:'https://pytorch.org/functorch/stable/notebooks/aot_autograd_optimizations.html'},{label:'YouTube: TorchScript Tutorial',url:'https://www.youtube.com/results?search_query=pytorch+torchscript+jit+tutorial'}],
+  'experience level': [{label:'How to bridge experience gaps (article)',url:'https://www.levels.fyi/'},{label:'Open Source Contribution Guide',url:'https://opensource.guide/how-to-contribute/'},{label:'AWS Neuron GitHub — contribute',url:'https://github.com/aws/aws-neuron-sdk'},{label:'Build ML Systems Portfolio',url:'https://madewithml.com/'}],
+  'ml infrastructure': [{label:'Made With ML – MLOps',url:'https://madewithml.com/'},{label:'MLOps Specialization (Coursera)',url:'https://www.coursera.org/specializations/machine-learning-engineering-for-production-mlops'},{label:'Full Stack Deep Learning',url:'https://fullstackdeeplearning.com/'},{label:'Weights & Biases Courses (free)',url:'https://www.wandb.courses/'}],
+  'reinforcement learning': [{label:'Deep RL Course – HuggingFace (free)',url:'https://huggingface.co/learn/deep-rl-course/unit0/introduction'},{label:'Spinning Up in Deep RL – OpenAI',url:'https://spinningup.openai.com/en/latest/'},{label:'Coursera: RL Specialization',url:'https://www.coursera.org/specializations/reinforcement-learning'},{label:'YouTube: RL from Scratch',url:'https://www.youtube.com/results?search_query=reinforcement+learning+tutorial'}],
+  'generative ai': [{label:'Google GenAI Learning Path (free)',url:'https://www.cloudskillsboost.google/paths/118'},{label:'Coursera: Generative AI with LLMs',url:'https://www.coursera.org/learn/generative-ai-with-llms'},{label:'DeepLearning.AI Short Courses (free)',url:'https://www.deeplearning.ai/short-courses/'},{label:'Hugging Face Agents Course',url:'https://huggingface.co/learn/agents-course/unit0/introduction'}],
+  'llm orchestration': [{label:'LangChain Docs & Tutorials',url:'https://docs.langchain.com/'},{label:'LlamaIndex Docs',url:'https://docs.llamaindex.ai/'},{label:'LLM Bootcamp – Full Stack (free)',url:'https://fullstackdeeplearning.com/llm-bootcamp/'},{label:'HuggingFace Transformers Course',url:'https://huggingface.co/learn/nlp-course/chapter1/1'}],
   default:   [{label:'Coursera (browse free courses)',url:'https://www.coursera.org/'},{label:'Udemy top courses',url:'https://www.udemy.com/'},{label:'Kaggle Learn (free)',url:'https://www.kaggle.com/learn'},{label:'YouTube tutorials',url:'https://www.youtube.com/results?search_query=learn+'}]
 };
 
@@ -657,7 +667,10 @@ function getLinksForSkill(skillName) {
   // Exact / substring match against LEARNING_DB keys
   for (const [key, links] of Object.entries(LEARNING_DB)) {
     if (key === 'default') continue;
-    if (lower.includes(key) || key.includes(lower.replace(/[^a-z0-9 ]/g, '').trim())) return links;
+    // Match if the skill name contains the key OR key contains core words of the skill name
+    const coreWords = lower.replace(/[^a-z0-9 ]/g, '').trim().split(' ').filter(w => w.length > 3);
+    const keyHitAll = coreWords.length > 0 && coreWords.every(w => key.includes(w));
+    if (lower.includes(key) || key.includes(lower.replace(/[^a-z0-9 ]/g, '').trim()) || keyHitAll) return links;
   }
   // fallback: YouTube + Coursera with skill name
   return [
@@ -684,12 +697,15 @@ function parseGapsFromText(gapsText) {
     if (gapMatch) {
       const name = gapMatch[1].trim();
       // Skip junk lines like "GAP None mentioned in the job description..."
-      if (JUNK_RE.test(name) || name.length > 60) {
+      // Truncate long names (AI sometimes writes full JD sentences as gap names)
+      const words = name.split(' ');
+      const cleanName = words.length > 4 ? words.slice(0, 4).join(' ') : name;
+      if (JUNK_RE.test(cleanName) || cleanName.length > 50) {
         current = null; // stop accumulating into a junk gap
         continue;
       }
       if (current) gaps.push(current);
-      current = { name, priority: 'MEDIUM', reason: '', fix: '' };
+      current = { name: cleanName, priority: 'MEDIUM', reason: '', fix: '' };
       continue;
     }
 
