@@ -1,20 +1,12 @@
 spring:
-  application:
-    name: job-application-assistant
   ai:
-    ollama:
-      base-url: http://localhost:11434
+    openai:
+      base-url: https://api.groq.com/openai
+      api-key: ${GROQ_API_KEY}
       chat:
         options:
-          model: llama3
-          # Default temperature — overridden per-node in code
-          # Analytical nodes use 0.1, creative nodes use 0.6
-          temperature: 0.1
+          model: llama-3.3-70b-versatile
+          temperature: 0.7
 
 server:
-  port: 8080
-
-logging:
-  level:
-    com.mahesh: DEBUG
-    org.bsc.langgraph4j: INFO
+  port: ${PORT:8080}
